@@ -115,15 +115,15 @@ function ejecutarTecnica() {
     mainMenu # Ir directamente al menú
     ;;
   "martingala")
-    echo -e "${greenColour}[+] Ejecutando estrategia Martingala${endColour}"
+    echo -e "${greenColour}[+] ${endColour} ${grayColour} Ejecutando estrategia Martingala${endColour}"
     martingala
     ;;
   "inverseLabroucher")
-    echo -e "${greenColour}[+] Ejecutando estrategia Inverse Labroucher${endColour}"
+    echo -e "${greenColour}[+] ${endColour} ${grayColour}Ejecutando estrategia Inverse Labroucher${endColour}"
     inverseLabroucher
     ;;
   *)
-    echo -e "${redColour}[!] Técnica '$technique' no implementada${endColour}"
+    echo -e "${redColour}[!] ${endColour}  ${grayColour}Técnica '$technique' no implementada${endColour}"
     exit 1
     ;;
   esac
@@ -131,52 +131,52 @@ function ejecutarTecnica() {
 function martingala() {
   bet_amount=1
   choice=""
-  echo -e "${blueColour}[?]${endColour} ${negrita}Con cuando desas iniciar la apuesta (Cantidad mínima: 1)${endColour}" && read bet_amount
+  echo -e "${blueColour}[?]${endColour} ${negrita} ¿Con cuanto deseas iniciar la apuesta? ${endColour} ${subrayado}(Cantidad mínima: 1)${endColour}" && read bet_amount
   if ! [[ "$bet_amount" =~ ^[0-9]+$ ]] || [ "$bet_amount" -lt 1 ]; then
-    echo -e "${redColour}[!] Cantidad inválida. Debe ser un número entero mayor o igual a 1.${endColour}"
+    echo -e "${redColour}[!]${endColour} ${grayColour} Cantidad inválida. Debe ser un número entero mayor o igual a 1.${endColour}"
     return
   fi
-  echo -e "${blueColour}[?]${endColour} ${negrita}A que deseas apostar par o impar?${endColour}" && read choice
+  echo -e "${blueColour}[?]${endColour} ${negrita}¿A que deseas apostar par o impar?${endColour}" && read choice
   if [ "$choice" != "par" ] && [ "$choice" != "impar" ]; then
     echo -e "${redColour}[!] Opción inválida. Debes elegir 'par' o 'impar'.${endColour}"
     return
   fi
 
   local rounds=0
-  echo -e "${blueColour}[?]${endColour} ${negrita} Cuantas rondas desdeas jugar: ${endColour}" && read maxRounds
-  if ! [[ "$rounds" =~ ^[0-9]+$ ]] || [ "$rounds" -lt 0 ]; then
-    echo -e "${redColour}[!] Cantidad inválida. Debe ser un número entero mayor o igual a 1.${endColour}"
+  echo -e "${blueColour}[?]${endColour} ${grayColour} ¿Cuantas rondas deseas jugar? ${endColour}" && read maxRounds
+  if ! [[ "$maxRounds" =~ ^[0-9]+$ ]] || [ "$maxRounds" -lt 0 ]; then
+    echo -e "${redColour}[!]${endColour} ${grayColour} Cantidad inválida. Debe ser un número entero mayor o igual a 1.${endColour}"
     return
   fi
   while [ "$current_money" -gt 0 ] && [ "$rounds" -lt $maxRounds ]; do # Limitar rondas
     ((rounds++))
-    echo -e "${yellowColour}Ronda $rounds - Apostando $bet_amount€ a $choice. Dinero actual: $current_money€${endColour}"
+    echo -e "${yellowColour}Ronda${endColour} $rounds - ${yellowColour}Apostando${endColour}  $bet_amount€ ${yellowColour}a${endColour} $choice. ${yellowColour}Dinero actual:${endColour} $current_money€"
 
     result=$((RANDOM % 37))
-    echo -e "${purpleColour}Resultado de la ruleta: $result${endColour}"
+    echo -e "${purpleColour}Resultado de la ruleta:${endColour} $result"
 
     if { [ "$choice" == "par" ] && [ $((result % 2)) -eq 0 ] && [ "$result" -ne 0 ]; } || { [ "$choice" == "impar" ] && [ $((result % 2)) -ne 0 ]; }; then
       current_money=$((current_money + bet_amount))
-      echo -e "${greenColour}¡Ganaste! Nuevo saldo: $current_money€${endColour}"
+      echo -e "${greenColour}¡Ganaste!${endColour} Nuevo saldo: $current_money€"
       bet_amount=1
     else
       current_money=$((current_money - bet_amount))
-      echo -e "${redColour}Perdiste. Nuevo saldo: $current_money€${endColour}"
+      echo -e "${redColour}Perdiste.${endColour} Nuevo saldo: ${negrita} $current_money€${endColour}"
       bet_amount=$((bet_amount * 2))
       if [ "$bet_amount" -gt "$current_money" ]; then
         bet_amount="$current_money"
       fi
     fi
     if [ "$rounds" -ge "$maxRounds" ]; then
-      echo -e "${blueColour}Has alcanzado el número máximo de rondas (${maxRounds}).${endColour}"
-      echo -e "${greenColour}¿Quieres jugar mas rondas? (s/n)${endColour}" && read more_rounds
+      echo -e "${redColour}[!]${endColour}Has alcanzado el número máximo de rondas (${maxRounds})."
+      echo -e "${blueColour}[?]${endColour}${grayColour}¿Quieres jugar mas rondas? (s/n)${endColour}" && read more_rounds
 
       if [ "$more_rounds" != "s" ]; then
         echo -e "${greenColour}Saliendo de Martingalaaa con $current_money€${endColour}"
         return
 
       else
-        echo -e "${blueColour}¿Cuantas rondas mas deseas jugar? ${endColour}" && read additional_rounds
+        echo -e "${blueColour}[?]${endColour}¿Cuantas rondas mas deseas jugar?" && read additional_rounds
         if ! [[ "$additional_rounds" =~ ^[0-9]+$ ]] || [ "$additional_rounds" -lt 1 ]; then
           echo -e "${redColour}[!] Cantidad inválida. Debe ser un número entero mayor o igual a 1.${endColour}"
           return
@@ -190,7 +190,7 @@ function martingala() {
       break
     fi
 
-    echo -e "${blueColour}¿Deseas continuar con Martingala? (s/n)${endColour}" && read continue_choice
+    echo -e "${blueColour}[?]${endColour}¿Deseas continuar con Martingala? (s/n)" && read continue_choice
     if [ "$continue_choice" != "s" ]; then
       echo -e "${greenColour}Saliendo de Martingala con $current_money€${endColour}"
       return
