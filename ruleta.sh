@@ -1,4 +1,21 @@
 #!/bin/bash
+#!/bin/bash
+clear
+echo -e "\e[32m"
+cat <<"EOF"
+  
+   ██████╗  ██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗███████╗
+   ██╔══██╗██╔═══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝██╔════╝
+   ██████╔╝██║   ██║██║   ██║██║     ██║     █████╗     ██║   █████╗  
+   ██╔══██╗██║   ██║██║   ██║██║     ██║     ██╔══╝     ██║   ██╔══╝  
+   ██║  ██║╚██████╔╝╚██████╔╝███████╗███████╗███████╗   ██║   ███████╗
+   ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   ╚══════╝
+                                                                                                                                                                                                     
+                                                                    
+                       🎰 Roulette.sh 🎰
+EOF
+echo -e "\e[0m"
+sleep 1
 
 # Trap for Ctrl+C
 trap handle_ctrl_c INT
@@ -200,7 +217,7 @@ function inverse_labouchere() {
 
 # Menu and stats functions
 function help_panel() {
-  echo -e "\n🆒 ${yellow_colour}[+] Uso: ./roulette.sh -m <money_amount>${end_colour}\n"
+  echo -e "\n🆒 ${yellow_colour}[+] Uso: ./roulette.sh -m [dinero] -m [tecnica o menu]${end_colour}\n"
   echo -e "\t🔄 ${purple_colour}-u${end_colour} ${gray_colour}Descargar o Actualizar los Archivos necesarios${end_colour}"
   echo -e "\t💻 ${purple_colour}-m${end_colour} ${gray_colour}Dinero con el que se desea jugar${end_colour}"
   echo -e "\t🛠️ ${purple_colour}-t${end_colour} ${gray_colour}Tecnica que deseas usar o ir al menu de apuestas${end_colour} ${purple_colour}(martingale inverseLabouchere o menu)${end_colour}"
