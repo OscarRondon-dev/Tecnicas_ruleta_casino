@@ -29,7 +29,38 @@ technique=""
 current_money=0
 initial_money=0
 maxMoneyMartingala=0
-#funciones
+maxRounds=0
+#funciones helpers
+function solicitarApuestaYEleccion() {
+  while true; do
+    echo -e "${blueColour}[?]${endColour} ${negrita}¿A qué deseas apostar, par o impar?${endColour}"
+    read choice
+
+    if [ "$choice" = "par" ] || [ "$choice" = "impar" ]; then
+      break # Salimos del bucle si la entrada es válida
+    else
+      echo -e "${redColour}[!] Opción inválida. Debes elegir 'par' o 'impar'.${endColour}"
+    fi
+  done
+}
+#     Verificar si se alcanzó el máximo de rondas
+function verificarMaxRondas() {
+  while true; do
+    echo -e "${blueColour}[?]${endColour} ${grayColour} ¿Cuantas rondas deseas jugar? ${endColour}" && read maxRounds
+
+    if [[ "$maxRounds" =~ ^[0-9]+$ ]] || [ "$maxRounds" -lt 0 ]; then
+      break
+    else
+      echo -e "${redColour}[!]${endColour} ${grayColour} Cantidad inválida. Debe ser un número entero mayor o igual a 1.${endColour}"
+
+    fi
+  done
+}
+function girarRuleta() {
+  echo $((RANDOM % 37))
+}
+
+# Help Panel
 
 function helpPanel() {
   echo -e "\n 🆒${yellowColour}[+] Uso: ./htbmachines.sh -m <machineName>${endColour}\n"
@@ -141,29 +172,23 @@ function martingala() {
     return
   fi
   local initial_bet="$bet_amount"
-  echo -e "${blueColour}[?]${endColour} ${negrita}¿A que deseas apostar par o impar?${endColour}" && read choice
-  if [ "$choice" != "par" ] && [ "$choice" != "impar" ]; then
-    echo -e "${redColour}[!] Opción inválida. Debes elegir 'par' o 'impar'.${endColour}"
-    return
-  fi
+  #  Solicitar elección par/impar
+
+  solicitarApuestaYEleccion
   #Variables para el bucle
   local rounds=0
 
   local max_money=0
   maxMoneyMartingala=$max_money
-
-  echo -e "${blueColour}[?]${endColour} ${grayColour} ¿Cuantas rondas deseas jugar? ${endColour}" && read maxRounds
-
-  if ! [[ "$maxRounds" =~ ^[0-9]+$ ]] || [ "$maxRounds" -lt 0 ]; then
-    echo -e "${redColour}[!]${endColour} ${grayColour} Cantidad inválida. Debe ser un número entero mayor o igual a 1.${endColour}"
-    return
-  fi
+  #   Solicitar número máximo de rondas
+  verificarMaxRondas
   # Bucle principal de la estrategia Martingala
   while [ "$current_money" -gt 0 ] && [ "$rounds" -lt $maxRounds ]; do # Limitar rondas
     ((rounds++))
     echo -e "${yellowColour}Ronda${endColour} $rounds - ${yellowColour}Apostando${endColour}  $bet_amount€ ${yellowColour}a${endColour} $choice. ${yellowColour}Dinero actual:${endColour} $current_money€"
     #    Simular el giro de la ruleta (número aleatorio entre 0 y 36)
-    result=$((RANDOM % 37))
+    result=$(girarRuleta)
+
     echo -e "${purpleColour}Resultado de la ruleta:${endColour} $result"
     # Verificar si el jugador ganó o perdió
     if { [ "$choice" == "par" ] && [ $((result % 2)) -eq 0 ] && [ "$result" -ne 0 ]; } || { [ "$choice" == "impar" ] && [ $((result % 2)) -ne 0 ]; }; then
@@ -230,8 +255,99 @@ function martingala() {
 }
 function inverseLabroucher() {
   # Lógica específica de inverseLabroucher
-  sequence=(1 1)
-  # Tu implementación aquí
+  echo -e "${blueColour}=== Dinero Actual ===${endColour}"
+  echo -e "${greenColour}$current_money€${endColour}\n"
+  solicitarApuestaYEleccion
+
+  # Secuencia inicial
+  declare -a sequence=(1 2 3 4)
+  local rounds=0
+  local maxRounds=100
+
+  echo -e "${yellowColour}[+] Secuencia inicial: ${sequence[@]}${endColour}"
+  #   Solicitar número máximo de rondas
+  verificarMaxRondas
+  # Bucle principal
+  while [ "$current_money" -gt 0 ] && [ "$rounds" -lt "$maxRounds" ] && [ ${#sequence[@]} -gt 0 ]; do
+    ((rounds++))
+
+    # Calcular apuesta (primero + último)
+    if [ ${#sequence[@]} -eq 1 ]; then
+      bet_amount=${sequence[0]}
+    else
+      bet_amount=$((sequence[0] + sequence[-1]))
+    fi
+
+    # Verificar si hay suficiente dinero
+    if [ "$bet_amount" -gt "$current_money" ]; then
+      echo -e "${redColour}[!] No tienes suficiente dinero para apostar $bet_amount€${endColour}"
+      break
+    fi
+
+    echo -e "\n${yellowColour}Ronda${endColour} $rounds"
+    echo -e "${grayColour}Secuencia actual: [${sequence[@]}]${endColour}"
+    echo -e "${yellowColour}Apostando${endColour} $bet_amount€ ${yellowColour}a${endColour} $choice. ${yellowColour}Dinero actual:${endColour} $current_money€"
+
+    # Girar ruleta
+    result=$((RANDOM % 37))
+    echo -e "${purpleColour}Resultado de la ruleta:${endColour} $result"
+
+    # Verificar ganancia/pérdida
+    if { [ "$choice" == "par" ] && [ $((result % 2)) -eq 0 ] && [ "$result" -ne 0 ]; } ||
+      { [ "$choice" == "impar" ] && [ $((result % 2)) -ne 0 ]; }; then
+      # GANASTE
+      current_money=$((current_money + bet_amount))
+      echo -e "${greenColour}¡Ganaste!${endColour} Nuevo saldo: $current_money€"
+
+      # Agregar la apuesta al final de la secuencia
+      sequence+=($bet_amount)
+      echo -e "${greenColour}Nueva secuencia: [${sequence[@]}]${endColour}"
+
+    else
+      # PERDISTE
+      current_money=$((current_money - bet_amount))
+      echo -e "${redColour}Perdiste.${endColour} Nuevo saldo: $current_money€"
+
+      # Eliminar primero y último de la secuencia
+      if [ ${#sequence[@]} -eq 1 ]; then
+        unset sequence[0]
+        echo -e "${redColour}Secuencia vacía. Reiniciando...${endColour}"
+        sequence=(1 2 3 4)
+      elif [ ${#sequence[@]} -eq 2 ]; then
+        unset sequence[0]
+        unset sequence[1]
+        sequence=("${sequence[@]}") # Reindexar
+        echo -e "${redColour}Secuencia vacía. Reiniciando...${endColour}"
+        sequence=(1 2 3 4)
+      else
+        unset sequence[0]
+        unset sequence[-1]
+        sequence=("${sequence[@]}") # Reindexar
+        echo -e "${redColour}Nueva secuencia: [${sequence[@]}]${endColour}"
+      fi
+    fi
+
+    # Verificar quiebra
+    if [ "$current_money" -le 0 ]; then
+      echo -e "\n${redColour}=== Te has quedado sin dinero! ===${endColour}\n"
+      break
+    fi
+
+    # Verificar límite de rondas
+    if [ "$rounds" -ge "$maxRounds" ]; then
+      echo -e "${blueColour}[?]${endColour}¿Quieres jugar más rondas? (s/n)${endColour}" && read more_rounds
+      if [ "$more_rounds" == "s" ]; then
+        echo -e "${blueColour}[?]${endColour}¿Cuántas más?${endColour}" && read additional
+        if [[ "$additional" =~ ^[0-9]+$ ]]; then
+          maxRounds=$((maxRounds + additional))
+        fi
+      else
+        break
+      fi
+    fi
+  done
+
+  echo -e "\n${greenColour}Finalizaste con $current_money€${endColour}"
 }
 
 while getopts ":m:t:h" arg; do
