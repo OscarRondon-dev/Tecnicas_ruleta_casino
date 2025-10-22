@@ -29,7 +29,13 @@ technique=""
 current_money=0
 initial_money=0
 maxMoneyMartingala=0
+maxMoneyInverseLaBroucher=0
 maxRounds=0
+rounds=0
+more_rounds=0
+additional_rounds=0
+tecnicaSeleccionada=""
+
 #funciones helpers
 function solicitarApuestaYEleccion() {
   while true; do
@@ -58,6 +64,34 @@ function verificarMaxRondas() {
 }
 function girarRuleta() {
   echo $((RANDOM % 37))
+}
+#     Verificar si se alcanzó el máximo de rondas
+function MasRondasVerificar() {
+  if [ "$rounds" -ge "$maxRounds" ]; then
+    echo -e "${redColour}[!]${endColour}Has alcanzado el número máximo de rondas (${maxRounds})."
+    while true; do
+      echo -e "${blueColour}[?]${endColour}${grayColour}¿Quieres jugar mas rondas? (s/n)${endColour}" && read more_rounds
+      if [ "$more_rounds" == "n" ] || [ "$more_rounds" == "s" ]; then
+        break
+      else
+        echo -e "${redColour}[!] Opción inválida. Debes responder 's' o 'n'.${endColour}"
+      fi
+    done
+
+    if [ "$more_rounds" != "s" ]; then
+      echo -e "${greenColour}Saliendo de $tecnicaSeleccionada con $current_money€${endColour}"
+      return
+      # Si el usuario quiere más rondas
+    else
+      echo -e "${blueColour}[?]${endColour}¿Cuantas rondas mas deseas jugar?" && read additional_rounds
+      if ! [[ "$additional_rounds" =~ ^[0-9]+$ ]] || [ "$additional_rounds" -lt 1 ]; then
+        echo -e "${redColour}[!] Cantidad inválida. Debe ser un número entero mayor o igual a 1.${endColour}"
+        return
+      fi
+      maxRounds=$((maxRounds + additional_rounds))
+
+    fi
+  fi
 }
 
 # Help Panel
@@ -89,16 +123,18 @@ function mainMenu() {
     case "$menu_choice" in
     1)
       if [ "$current_money" -gt 0 ]; then
+        tecnicaSeleccionada="Martingala"
         martingala
       else
-        echo -e "${redColour}[!] No tienes dinero para jugar${endColour}"
+        echo -e "${redColour}[!]${endColour} No tienes dinero para jugar"
       fi
       ;;
     2)
       if [ "$current_money" -gt 0 ]; then
+        tecnicaSeleccionada="Inverse Labroucher"
         inverseLabroucher
       else
-        echo -e "${redColour}[!] No tienes dinero para jugar${endColour}"
+        echo -e "${redColour}[!]${endColour} No tienes dinero para jugar"
       fi
       ;;
     3)
@@ -106,14 +142,14 @@ function mainMenu() {
       ;;
     4)
       current_money="$initial_money"
-      echo -e "${greenColour}[+] Dinero reseteado a $current_money€${endColour}"
+      echo -e "${blueColour}[+]${endColour} Dinero reseteado a ${greenColour}$current_money€${endColour}"
       ;;
     5)
-      echo -e "${greenColour}[+] Gracias por jugar. Saldo final: $current_money€${endColour}"
+      echo -e "${blueolour}[+]${endColour} Gracias por jugar. Saldo final: ${greenColour}$current_money€${endColour}"
       exit 0
       ;;
     *)
-      echo -e "${redColour}[!] Opción inválida${endColour}"
+      echo -e "${redColour}[!]${endColour} Opción inválida"
       ;;
     esac
   done
@@ -123,6 +159,7 @@ function showStats() {
   echo -e "Dinero inicial: ${greenColour}$initial_money€${endColour}"
   echo -e "Dinero actual: ${blueColour}$current_money€${endColour}"
   echo -e "Ganancia maxima MartinGala ${yellowColour}$maxMoneyMartingala€${endColour}"
+  echo -e "Ganancia maxima Inverse LaBroucher ${yellowColour}$maxMoneyInverseLaBroucher€${endColour}"
   echo
 
   local profit=$((current_money - initial_money))
@@ -163,8 +200,8 @@ function ejecutarTecnica() {
   esac
 }
 function martingala() {
-  bet_amount=""
-  choice=""
+
+  local rounds=0
   #    Solicitar al usuario la cantidad inicial de la apuesta y la elección par/impar
   echo -e "${blueColour}[?]${endColour} ${negrita} ¿Con cuanto deseas iniciar la apuesta? ${endColour} ${subrayado}(Cantidad mínima: 1)${endColour}" && read bet_amount
   if ! [[ "$bet_amount" =~ ^[0-9]+$ ]] || [ "$bet_amount" -lt 1 ]; then
@@ -176,10 +213,8 @@ function martingala() {
 
   solicitarApuestaYEleccion
   #Variables para el bucle
-  local rounds=0
+  rounds=0
 
-  local max_money=0
-  maxMoneyMartingala=$max_money
   #   Solicitar número máximo de rondas
   verificarMaxRondas
   # Bucle principal de la estrategia Martingala
@@ -193,15 +228,9 @@ function martingala() {
     # Verificar si el jugador ganó o perdió
     if { [ "$choice" == "par" ] && [ $((result % 2)) -eq 0 ] && [ "$result" -ne 0 ]; } || { [ "$choice" == "impar" ] && [ $((result % 2)) -ne 0 ]; }; then
       current_money=$((current_money + bet_amount))
-      if [ "$current_money" -gt "$max_money" ]; then
-        max_money="$current_money"
-      fi
       echo -e "${greenColour}¡Ganaste!${endColour} Nuevo saldo: $current_money€"
       # Reiniciar la apuesta a la cantidad inicial
       bet_amount="$initial_bet"
-      if [ "$max_money" -gt "$maxMoneyMartingala" ]; then
-        maxMoneyMartingala=$max_money
-      fi
 
     else
       #
@@ -216,41 +245,18 @@ function martingala() {
       fi
     fi
     #     Verificar si se alcanzó el máximo de rondas
-    if [ "$rounds" -ge "$maxRounds" ]; then
-      echo -e "${redColour}[!]${endColour}Has alcanzado el número máximo de rondas (${maxRounds})."
-      echo -e "${blueColour}[?]${endColour}${grayColour}¿Quieres jugar mas rondas? (s/n)${endColour}" && read more_rounds
-      if [ "$more_rounds" != "n" ] && [ "$more_rounds" != "s" ]; then
-        echo -e "${redColour}[!] Opción inválida. Debes responder 's' o 'n'.${endColour}"
-        return
-      fi
-
-      if [ "$more_rounds" != "s" ]; then
-        echo -e "${greenColour}Saliendo de Martingalaaa con $current_money€${endColour}"
-        return
-        # Si el usuario quiere más rondas
-      else
-        echo -e "${blueColour}[?]${endColour}¿Cuantas rondas mas deseas jugar?" && read additional_rounds
-        if ! [[ "$additional_rounds" =~ ^[0-9]+$ ]] || [ "$additional_rounds" -lt 1 ]; then
-          echo -e "${redColour}[!] Cantidad inválida. Debe ser un número entero mayor o igual a 1.${endColour}"
-          return
-        fi
-        maxRounds=$((maxRounds + additional_rounds))
-
-      fi
-    fi
+    MasRondasVerificar
     # Verificar si el jugador se ha quedado sin dinero
     if [ "$current_money" -le 0 ]; then
       echo -e "\n ===== ${redColour}Te has quedado sin dinero!!😂🤣${endColour}==="
-      echo -e "\n Tu maximo acumulado fue de: ${greenColour}$max_money€${endColour} en la ronda $rounds \n"
       break
     fi
 
-    #echo -e "${blueColour}[?]${endColour}¿Deseas continuar con Martingala? (s/n)" && read continue_choice
-    #if [ "$continue_choice" != "s" ]; then
-    #echo -e "${greenColour}Saliendo de Martingala con $current_money€${endColour}"
-    #return
-    #fi
   done
+  echo -e "\n${greenColour}Finalizaste con $current_money€${endColour}"
+  if [ "$current_money" -gt "$maxMoneyMartingala" ]; then
+    maxMoneyMartingala=$current_money
+  fi
 
 }
 function inverseLabroucher() {
@@ -262,7 +268,6 @@ function inverseLabroucher() {
   # Secuencia inicial
   declare -a sequence=(1 2 3 4)
   local rounds=0
-  local maxRounds=100
 
   echo -e "${yellowColour}[+] Secuencia inicial: ${sequence[@]}${endColour}"
   #   Solicitar número máximo de rondas
@@ -297,10 +302,15 @@ function inverseLabroucher() {
       { [ "$choice" == "impar" ] && [ $((result % 2)) -ne 0 ]; }; then
       # GANASTE
       current_money=$((current_money + bet_amount))
+      if [ "$current_money" -gt "$max_money" ]; then
+        max_money="$current_money"
+      fi
+
       echo -e "${greenColour}¡Ganaste!${endColour} Nuevo saldo: $current_money€"
 
       # Agregar la apuesta al final de la secuencia
       sequence+=($bet_amount)
+
       echo -e "${greenColour}Nueva secuencia: [${sequence[@]}]${endColour}"
 
     else
@@ -334,19 +344,12 @@ function inverseLabroucher() {
     fi
 
     # Verificar límite de rondas
-    if [ "$rounds" -ge "$maxRounds" ]; then
-      echo -e "${blueColour}[?]${endColour}¿Quieres jugar más rondas? (s/n)${endColour}" && read more_rounds
-      if [ "$more_rounds" == "s" ]; then
-        echo -e "${blueColour}[?]${endColour}¿Cuántas más?${endColour}" && read additional
-        if [[ "$additional" =~ ^[0-9]+$ ]]; then
-          maxRounds=$((maxRounds + additional))
-        fi
-      else
-        break
-      fi
-    fi
-  done
+    MasRondasVerificar
 
+  done
+  if [ "$current_money" -gt "$maxMoneyInverseLaBroucher" ]; then
+    maxMoneyInverseLaBroucher=$current_money
+  fi
   echo -e "\n${greenColour}Finalizaste con $current_money€${endColour}"
 }
 
