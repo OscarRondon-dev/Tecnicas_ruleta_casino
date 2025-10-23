@@ -54,6 +54,10 @@ function handle_ctrl_c() {
   exit 1
 }
 
+# --------------------------------------------------------------------------------------
+# Request bet choice (even/odd)
+# --------------------------------------------------------------------------------------
+
 function request_bet_and_choice() {
   while true; do
     echo -e "${blue_colour}[?]${end_colour} ${bold}¿A qué deseas apostar, par o impar?${end_colour}"
@@ -65,7 +69,10 @@ function request_bet_and_choice() {
     fi
   done
 }
-
+# --------------------------------------------------------------------------------------
+# Check maximum rounds
+# --------------------------------------------------------------------------------------
+#
 function check_max_rounds() {
   while true; do
     echo -e "${blue_colour}[?]${end_colour} ${gray_colour}¿Cuantas rondas deseas jugar?${end_colour}"
@@ -82,6 +89,10 @@ function spin_roulette() {
   echo $((RANDOM % 37))
 }
 
+# --------------------------------------------------------------------------------------
+# Verify if more rounds are needed
+# --------------------------------------------------------------------------------------
+
 function verify_more_rounds() {
   if [ "$current_rounds" -ge "$max_rounds" ]; then
     echo -e "${red_colour}[!]${end_colour} Has alcanzado el número máximo de rondas (${max_rounds})."
@@ -95,7 +106,7 @@ function verify_more_rounds() {
       fi
     done
     if [ "$more_rounds" != "s" ]; then
-      echo -e "${green_colour}Saliendo de $selected_strategy con $current_funds€${end_colour}"
+      echo -e "${red_colour}[!]${end_colour}Saliendo de $selected_strategy con ${green_colour}$current_funds€${end_colour}"
       return
     else
       echo -e "${blue_colour}[?]${end_colour} ¿Cuantas rondas mas deseas jugar?"
@@ -109,83 +120,158 @@ function verify_more_rounds() {
   fi
 }
 
-# Game strategy functions
+# --------------------------------------------------------------------------------------
+# Inverse Labouchere strategy
+# --------------------------------------------------------------------------------------
+
 function martingale() {
   local current_rounds=0
+
+  # Get initial bet amount from user
   echo -e "${blue_colour}[?]${end_colour} ${bold}¿Con cuanto deseas iniciar la apuesta?${end_colour} ${underline}(Cantidad mínima: 1)${end_colour}"
   read bet_amount
+
+  # Validate bet amount
   if ! [[ "$bet_amount" =~ ^[0-9]+$ ]] || [ "$bet_amount" -lt 1 ]; then
     echo -e "${red_colour}[!]${end_colour} Cantidad inválida. Debe ser un número entero mayor o igual a 1."
     return
   fi
+
+  # Store initial bet for reset after wins
   local initial_bet="$bet_amount"
+
+  # Get user's bet choice (even/odd)
   request_bet_and_choice
+
+  # Initialize round counter
   current_rounds=0
+
+  # Get max rounds from user
   check_max_rounds
+
+  # Main game loop
   while [ "$current_funds" -gt 0 ] && [ "$current_rounds" -lt "$max_rounds" ]; do
     ((current_rounds++))
+
+    # Display round information
     echo -e "${yellow_colour}Ronda${end_colour} $current_rounds - ${yellow_colour}Apostando${end_colour} $bet_amount€ ${yellow_colour}a${end_colour} $choice. ${yellow_colour}Dinero actual:${end_colour} $current_funds€"
+
+    # Spin roulette
     result=$(spin_roulette)
     echo -e "${purple_colour}Resultado de la ruleta:${end_colour} $result"
-    if { [ "$choice" == "par" ] && [ $((result % 2)) -eq 0 ] && [ "$result" -ne 0 ]; } || { [ "$choice" == "impar" ] && [ $((result % 2)) -ne 0 ]; }; then
+
+    # Check if player won
+    if { [ "$choice" == "par" ] && [ $((result % 2)) -eq 0 ] && [ "$result" -ne 0 ]; } ||
+      { [ "$choice" == "impar" ] && [ $((result % 2)) -ne 0 ]; }; then
+
+      # WIN: Add winnings and reset bet
       current_funds=$((current_funds + bet_amount))
       echo -e "${green_colour}¡Ganaste!${end_colour} Nuevo saldo: $current_funds€"
       bet_amount="$initial_bet"
+
     else
+      # LOSS: Double bet for next round (Martingale strategy)
       current_funds=$((current_funds - bet_amount))
       echo -e "${red_colour}Perdiste.${end_colour} Nuevo saldo: ${bold}$current_funds€${end_colour}"
+
       bet_amount=$((bet_amount * 2))
+
+      # Cap bet at remaining funds
       if [ "$bet_amount" -gt "$current_funds" ]; then
         bet_amount="$current_funds"
       fi
     fi
+
+    # Ask if player wants more rounds
     verify_more_rounds
+
+    # Check for bankruptcy
     if [ "$current_funds" -le 0 ]; then
       echo -e "\n===== ${red_colour}Te has quedado sin dinero!!😂🤣${end_colour}==="
       break
     fi
   done
+
+  # Display final balance
   echo -e "\n${green_colour}Finalizaste con $current_funds€${end_colour}"
+
+  # Update global max if current is higher
   if [ "$current_funds" -gt "$max_money_martingale" ]; then
     max_money_martingale=$current_funds
   fi
 }
 
+# --------------------------------------------------------------------------------------
+# Inverse Labouchere strategy
+# --------------------------------------------------------------------------------------
+
 function inverse_labouchere() {
+  # Display current balance
   echo -e "${blue_colour}=== Dinero Actual ===${end_colour}"
   echo -e "${green_colour}$current_funds€${end_colour}\n"
+
+  # Get user's bet choice (even/odd)
   request_bet_and_choice
+
+  # Initialize sequence
   declare -a sequence=(1 2 3 4)
   local current_rounds=0
+
   echo -e "${yellow_colour}[+] Secuencia inicial: ${sequence[@]}${end_colour}"
+
+  # Get max rounds from user
   check_max_rounds
+
+  # Main game loop
   while [ "$current_funds" -gt 0 ] && [ "$current_rounds" -lt "$max_rounds" ] && [ ${#sequence[@]} -gt 0 ]; do
     ((current_rounds++))
+
+    # Calculate bet: single element or first + last
     if [ ${#sequence[@]} -eq 1 ]; then
       bet_amount=${sequence[0]}
     else
       bet_amount=$((sequence[0] + sequence[-1]))
     fi
+
+    # Check if player has enough funds
     if [ "$bet_amount" -gt "$current_funds" ]; then
       echo -e "${red_colour}[!]${end_colour} No tienes suficiente dinero para apostar $bet_amount€"
       break
     fi
+
+    # Display round information
     echo -e "\n${yellow_colour}Ronda${end_colour} $current_rounds"
     echo -e "${gray_colour}Secuencia actual: [${sequence[@]}]${end_colour}"
     echo -e "${yellow_colour}Apostando${end_colour} $bet_amount€ ${yellow_colour}a${end_colour} $choice. ${yellow_colour}Dinero actual:${end_colour} $current_funds€"
+
+    # Spin roulette
     result=$(spin_roulette)
     echo -e "${purple_colour}Resultado de la ruleta:${end_colour} $result"
-    if { [ "$choice" == "par" ] && [ $((result % 2)) -eq 0 ] && [ "$result" -ne 0 ]; } || { [ "$choice" == "impar" ] && [ $((result % 2)) -ne 0 ]; }; then
+
+    # Check if player won
+    if { [ "$choice" == "par" ] && [ $((result % 2)) -eq 0 ] && [ "$result" -ne 0 ]; } ||
+      { [ "$choice" == "impar" ] && [ $((result % 2)) -ne 0 ]; }; then
+
+      # WIN: Update funds and sequence
       current_funds=$((current_funds + bet_amount))
+
+      # Update max money record
       if [ "$current_funds" -gt "$max_money_inverse_labouchere" ]; then
         max_money_inverse_labouchere="$current_funds"
       fi
+
       echo -e "${green_colour}¡Ganaste!${end_colour} Nuevo saldo: $current_funds€"
+
+      # Add bet to end of sequence
       sequence+=($bet_amount)
       echo -e "${green_colour}Nueva secuencia: [${sequence[@]}]${end_colour}"
+
     else
+      # LOSS: Update funds and remove first/last from sequence
       current_funds=$((current_funds - bet_amount))
       echo -e "${red_colour}Perdiste.${end_colour} Nuevo saldo: $current_funds€"
+
+      # Remove first and last elements
       if [ ${#sequence[@]} -eq 1 ]; then
         unset sequence[0]
         echo -e "${red_colour}Secuencia vacía. Reiniciando...${end_colour}"
@@ -203,19 +289,29 @@ function inverse_labouchere() {
         echo -e "${red_colour}Nueva secuencia: [${sequence[@]}]${end_colour}"
       fi
     fi
+
+    # Check for bankruptcy
     if [ "$current_funds" -le 0 ]; then
       echo -e "\n${red_colour}=== Te has quedado sin dinero! ===${end_colour}\n"
       break
     fi
+
+    # Ask if player wants more rounds
     verify_more_rounds
   done
+
+  # Update global max if current is higher
   if [ "$current_funds" -gt "$max_money_inverse_labouchere" ]; then
     max_money_inverse_labouchere=$current_funds
   fi
+
+  # Display final balance
   echo -e "\n${green_colour}Finalizaste con $current_funds€${end_colour}"
 }
-
+#---------------------------------------------------------------------------------------
 # Menu and stats functions
+# --------------------------------------------------------------------------------------
+
 function help_panel() {
   echo -e "\n🆒 ${yellow_colour}[+] Uso: ./roulette.sh -m [dinero] -m [tecnica o menu]${end_colour}\n"
   echo -e "\t🔄 ${purple_colour}-u${end_colour} ${gray_colour}Descargar o Actualizar los Archivos necesarios${end_colour}"
@@ -232,13 +328,17 @@ function show_stats() {
   echo
   local profit=$((current_funds - starting_funds))
   if [ "$profit" -gt 0 ]; then
-    echo -e "Ganancia: ${green_colour}+$profit€${end_colour}"
+    echo -e "[+]Ganancia: ${green_colour}+$profit€${end_colour}"
   elif [ "$profit" -lt 0 ]; then
-    echo -e "Pérdida: ${red_colour}$profit€${end_colour}"
+    echo -e " [!] Pérdida: ${red_colour}$profit€${end_colour}"
   else
     echo -e "Sin ganancias ni pérdidas"
   fi
 }
+
+# --------------------------------------------------------------------------------------
+# Main menu function
+# --------------------------------------------------------------------------------------
 
 function main_menu() {
   while true; do
@@ -286,7 +386,10 @@ function main_menu() {
   done
 }
 
-# Main execution logic
+# --------------------------------------------------------------------------------------
+# Execute selected strategy
+# --------------------------------------------------------------------------------------
+
 function execute_strategy() {
   local funds="$1"
   local strategy="$2"
@@ -314,6 +417,10 @@ function execute_strategy() {
     ;;
   esac
 }
+
+# --------------------------------------------------------------------------------------
+# Parse command-line arguments
+# --------------------------------------------------------------------------------------
 
 while getopts ":m:t:h" arg; do
   case $arg in
